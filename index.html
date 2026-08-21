@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Box2Box Widget — Integration Test</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #222;
+            padding: 24px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 { margin-bottom: 8px; }
+        h2 { margin: 24px 0 12px; font-size: 1.1rem; color: #555; }
+        .subtitle { color: #888; margin-bottom: 24px; }
+        .config-panel {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .config-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            min-width: 140px;
+        }
+        select, input[type="text"], input[type="number"] {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            flex: 1;
+            min-width: 120px;
+        }
+        .env-selector { display: flex; gap: 8px; }
+        .env-btn {
+            padding: 6px 16px;
+            border: 2px solid #0078d4;
+            background: transparent;
+            color: #0078d4;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+        .env-btn:hover { background: #deecf9; }
+        .env-btn.active {
+            background: #0078d4;
+            color: #fff;
+        }
+        .open-btn {
+            background: #0078d4;
+            color: #fff;
+            border: none;
+            padding: 12px 32px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.15s;
+        }
+        .open-btn:hover { background: #106ebe; }
+        .open-btn:disabled { background: #aaa; cursor: not-allowed; }
+        .result-panel {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            font-family: 'Cascadia Code', Consolas, monospace;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+            min-height: 60px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .status-idle { background: #e0e0e0; color: #666; }
+        .status-loading { background: #fff4ce; color: #806000; }
+        .status-success { background: #dff6dd; color: #1a7431; }
+        .status-error { background: #fde7e9; color: #c42b1c; }
+        .result-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 12px;
+            display: none;
+        }
+        .result-card.visible { display: block; }
+        .result-card .box-name { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+        .result-card .box-code { color: #0078d4; font-family: monospace; }
+        .result-card .box-addr { color: #666; font-size: 0.875rem; margin-top: 4px; }
+        .result-card .box-gps { color: #888; font-size: 0.8rem; font-family: monospace; margin-top: 4px; }
+        .api-test-section { margin-top: 32px; }
+        .api-btn {
+            background: #5c2d91;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        .api-btn:hover { background: #4a2475; }
+        .hint { font-size: 0.8rem; color: #999; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Box2Box Widget Integration Test</h1>
+    <p class="subtitle">Test page for embedding the Box2Box box-picker widget from a GitHub Pages origin.</p>
+
+    <!-- ── Environment selector ──────────────────────────────────── -->
+    <h2>1. Widget Host</h2>
+    <div class="config-panel">
+        <div class="env-selector">
+            <button class="env-btn" data-host="https://box2boxwidget-popr-alzaboxesconnectors.d-dc1-k8sdmz01.alz.lcl">Dev (internal)</button>
+            <button class="env-btn active" data-host="https://box2boxwidget-test.alza.cz">Test</button>
+            <button class="env-btn" data-host="https://box2boxwidget.alza.cz">Prod</button>
+        </div>
+        <div class="hint">Current host: <code id="current-host">https://box2boxwidget-test.alza.cz</code></div>
+    </div>
+
+    <!-- ── Widget configuration ──────────────────────────────────── -->
+    <h2>2. Configuration</h2>
+    <div class="config-panel">
+        <div class="config-row">
+            <label for="countries">Countries</label>
+            <select id="countries">
+                <option value="CZ,SK" selected>CZ + SK</option>
+                <option value="CZ">CZ only</option>
+                <option value="SK">SK only</option>
+                <option value="">All countries</option>
+            </select>
+        </div>
+        <div class="config-row">
+            <label for="lang">Language</label>
+            <select id="lang">
+                <option value="cs" selected>cs</option>
+                <option value="en">en</option>
+                <option value="sk">sk</option>
+            </select>
+        </div>
+        <div class="config-row">
+            <label for="partner-api-key">Partner API Key</label>
+            <input type="text" id="partner-api-key" placeholder="optional — leave empty for anonymous">
+        </div>
+        <div class="config-row">
+            <label for="max-width">Max Width (px)</label>
+            <input type="number" id="max-width" placeholder="e.g. 480">
+        </div>
+    </div>
+
+    <!-- ── Open widget ────────────────────────────────────────────── -->
+    <h2>3. Open Widget <span class="status-badge status-idle" id="status">Idle</span></h2>
+    <button class="open-btn" id="open-widget">Open Box2Box Picker</button>
+
+    <!-- ── Result display ─────────────────────────────────────────── -->
+    <h2>4. Result</h2>
+    <div class="result-card" id="result-card">
+        <div class="box-name" id="result-name"></div>
+        <div class="box-code" id="result-code"></div>
+        <div class="box-addr" id="result-addr"></div>
+        <div class="box-gps" id="result-gps"></div>
+    </div>
+    <div class="result-panel" id="result-log">Waiting for interaction…</div>
+
+    <!-- ── Direct REST API test ────────────────────────────────────── -->
+    <div class="api-test-section">
+        <h2>5. Direct REST API Test</h2>
+        <p class="subtitle">Calls the public boxes endpoint directly via fetch (no widget iframe).</p>
+        <button class="api-btn" id="api-boxes">GET /api/v1/public/boxes</button>
+        <button class="api-btn" id="api-search">GET /api/v1/public/boxes/search</button>
+    </div>
+
+    <!-- ── Loader script (loaded dynamically on env change) ──────── -->
+    <script id="widget-loader"></script>
+
+    <script>
+        // ─── State ───────────────────────────────────────────────────
+        var currentHost = 'https://box2boxwidget-test.alza.cz';
+        var loaderLoaded = false;
+
+        // ─── DOM refs ────────────────────────────────────────────────
+        var envBtns = document.querySelectorAll('.env-btn');
+        var hostLabel = document.getElementById('current-host');
+        var openBtn = document.getElementById('open-widget');
+        var statusBadge = document.getElementById('status');
+        var resultLog = document.getElementById('result-log');
+        var resultCard = document.getElementById('result-card');
+        var resultName = document.getElementById('result-name');
+        var resultCode = document.getElementById('result-code');
+        var resultAddr = document.getElementById('result-addr');
+        var resultGps = document.getElementById('result-gps');
+        var apiBoxesBtn = document.getElementById('api-boxes');
+        var apiSearchBtn = document.getElementById('api-search');
+
+        // ─── Helpers ─────────────────────────────────────────────────
+        function setStatus(text, cls) {
+            statusBadge.textContent = text;
+            statusBadge.className = 'status-badge status-' + cls;
+        }
+
+        function logResult(label, data) {
+            var ts = new Date().toLocaleTimeString();
+            var json = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+            resultLog.textContent = '[' + ts + '] ' + label + '\n' + json + '\n\n' + resultLog.textContent;
+        }
+
+        function displaySelectedBox(box) {
+            resultCard.classList.add('visible');
+            resultName.textContent = box.name || '(no name)';
+            resultCode.textContent = box.code ? 'Code: ' + box.code : '';
+            var addr = box.address || {};
+            resultAddr.textContent = [addr.streetWithNumber, addr.city, addr.zipCode, addr.countryCode]
+                .filter(Boolean).join(', ');
+            if (box.gps) {
+                resultGps.textContent = 'GPS: ' + box.gps.latitude + ', ' + box.gps.longitude;
+            } else {
+                resultGps.textContent = '';
+            }
+        }
+
+        // ─── Loader script injection ──────────────────────────────────
+        function loadLoaderScript(host) {
+            // Remove old script if switching hosts
+            var oldScript = document.getElementById('widget-loader');
+            if (oldScript) {
+                oldScript.remove();
+            }
+            // Reset the global so the new script re-initializes
+            delete window.Box2BoxPicker;
+
+            var script = document.createElement('script');
+            script.id = 'widget-loader';
+            script.src = host + '/widget/v1/loader.js';
+            script.onload = function () {
+                loaderLoaded = true;
+                logResult('Loader loaded', 'OK — Box2BoxPicker global is available');
+            };
+            script.onerror = function () {
+                loaderLoaded = false;
+                setStatus('Load Failed', 'error');
+                logResult('Loader load error', 'Could not load ' + script.src);
+            };
+            document.body.appendChild(script);
+        }
+
+        // ─── Environment switching ───────────────────────────────────
+        envBtns.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                envBtns.forEach(function (b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                currentHost = btn.dataset.host;
+                hostLabel.textContent = currentHost;
+                loadLoaderScript(currentHost);
+            });
+        });
+
+        // ─── Open widget ──────────────────────────────────────────────
+        openBtn.addEventListener('click', function () {
+            if (!window.Box2BoxPicker) {
+                setStatus('Not Loaded', 'error');
+                logResult('Error', 'Loader script not loaded yet. Check network / host availability.');
+                return;
+            }
+
+            var countriesVal = document.getElementById('countries').value;
+            var langVal = document.getElementById('lang').value;
+            var partnerKey = document.getElementById('partner-api-key').value || undefined;
+            var maxWidthVal = document.getElementById('max-width').value;
+            var maxWidth = maxWidthVal ? parseInt(maxWidthVal, 10) : undefined;
+
+            var opts = {
+                countries: countriesVal,
+                lang: langVal,
+                partnerApiKey: partnerKey,
+                maxWidth: maxWidth,
+                onResult: function (result) {
+                    if (result.error) {
+                        setStatus('Error', 'error');
+                        logResult('onResult — error', result);
+                    } else if (result.selectedBox) {
+                        setStatus('Picked', 'success');
+                        displaySelectedBox(result.selectedBox);
+                        logResult('onResult — selectedBox', result.selectedBox);
+                    } else {
+                        setStatus('Closed', 'idle');
+                        logResult('onResult — closed without pick', '{}');
+                    }
+                }
+            };
+
+            setStatus('Opening…', 'loading');
+            logResult('Box2BoxPicker.open()', opts);
+            window.Box2BoxPicker.open(opts);
+        });
+
+        // ─── Direct REST API calls ────────────────────────────────────
+        function buildApiUrl(endpoint, extraParams) {
+            var url = currentHost + endpoint;
+            var params = [];
+            var partnerKey = document.getElementById('partner-api-key').value;
+            if (partnerKey) { params.push('partnerApiKey=' + encodeURIComponent(partnerKey)); }
+            var countriesVal = document.getElementById('countries').value;
+            if (countriesVal) { params.push('countries=' + encodeURIComponent(countriesVal)); }
+            var langVal = document.getElementById('lang').value;
+            if (langVal) { params.push('lang=' + encodeURIComponent(langVal)); }
+            if (extraParams) { params.push(extraParams); }
+            return url + (params.length ? '?' + params.join('&') : '');
+        }
+
+        apiBoxesBtn.addEventListener('click', function () {
+            var url = buildApiUrl('/api/v1/public/boxes');
+            logResult('fetch GET', url);
+            fetch(url)
+                .then(function (r) {
+                    var status = r.status + ' ' + r.statusText;
+                    return r.json().then(function (data) {
+                        var summary = Array.isArray(data)
+                            ? { status: status, count: data.length, firstBox: data[0] || null }
+                            : { status: status, body: data };
+                        logResult('fetch response', summary);
+                    }).catch(function () {
+                        logResult('fetch response', status + ' (non-JSON body)');
+                    });
+                })
+                .catch(function (err) {
+                    logResult('fetch error', err.message);
+                });
+        });
+
+        apiSearchBtn.addEventListener('click', function () {
+            var query = window.prompt('Search query (e.g. "prague", "brno", "bratislava"):');
+            if (!query) { return; }
+            var url = buildApiUrl('/api/v1/public/boxes/search', 'query=' + encodeURIComponent(query));
+            logResult('fetch GET', url);
+            fetch(url)
+                .then(function (r) {
+                    var status = r.status + ' ' + r.statusText;
+                    return r.json().then(function (data) {
+                        var summary = Array.isArray(data)
+                            ? { status: status, count: data.length, firstBox: data[0] || null }
+                            : { status: status, body: data };
+                        logResult('fetch response', summary);
+                    }).catch(function () {
+                        logResult('fetch response', status + ' (non-JSON body)');
+                    });
+                })
+                .catch(function (err) {
+                    logResult('fetch error', err.message);
+                });
+        });
+
+        // ─── Initial load ─────────────────────────────────────────────
+        loadLoaderScript(currentHost);
+    </script>
+</body>
+</html>
