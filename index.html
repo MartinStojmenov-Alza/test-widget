@@ -338,21 +338,7 @@
         apiBoxesBtn.addEventListener('click', function () {
             var url = buildApiUrl('/api/v1/public/boxes');
             logResult('fetch GET', url);
-            fetch(url)
-                .then(function (r) {
-                    var status = r.status + ' ' + r.statusText;
-                    return r.json().then(function (data) {
-                        var summary = Array.isArray(data)
-                            ? { status: status, count: data.length, firstBox: data[0] || null }
-                            : { status: status, body: data };
-                        logResult('fetch response', summary);
-                    }).catch(function () {
-                        logResult('fetch response', status + ' (non-JSON body)');
-                    });
-                })
-                .catch(function (err) {
-                    logResult('fetch error', err.message);
-                });
+            fetchWithDiagnostics(url);
         });
 
         apiSearchBtn.addEventListener('click', function () {
@@ -360,22 +346,60 @@
             if (!query) { return; }
             var url = buildApiUrl('/api/v1/public/boxes/search', 'query=' + encodeURIComponent(query));
             logResult('fetch GET', url);
-            fetch(url)
+            fetchWithDiagnostics(url);
+        });
+
+        // ─── Fetch with detailed CORS / network diagnostics ───────────
+        function fetchWithDiagnostics(url) {
+            fetch(url, { mode: 'cors' })
                 .then(function (r) {
                     var status = r.status + ' ' + r.statusText;
-                    return r.json().then(function (data) {
+                    var headers = {};
+                    r.headers.forEach(function (val, key) { headers[key] = val; });
+                    return r.text().then(function (bodyText) {
+                        var data;
+                        try { data = JSON.parse(bodyText); }
+                        catch (e) { data = bodyText.substring(0, 500); }
+
                         var summary = Array.isArray(data)
-                            ? { status: status, count: data.length, firstBox: data[0] || null }
-                            : { status: status, body: data };
+                            ? { status: status, count: data.length, firstBox: data[0] || null, responseHeaders: headers }
+                            : { status: status, body: data, responseHeaders: headers };
                         logResult('fetch response', summary);
-                    }).catch(function () {
-                        logResult('fetch response', status + ' (non-JSON body)');
                     });
                 })
                 .catch(function (err) {
-                    logResult('fetch error', err.message);
+                    // The browser gives us almost nothing here — a bare TypeError("Failed to fetch").
+                    // Probe with mode:'no-cors' to distinguish "host unreachable" from "CORS-blocked":
+                    //   - If no-cors also fails  → host is unreachable (DNS, firewall, down)
+                    //   - If no-cors succeeds    → host is reachable; the cors fetch was blocked by CORS policy
+                    fetch(url, { mode: 'no-cors' })
+                        .then(function (r2) {
+                            logResult('fetch error (CORS blocked)', {
+                                error: err.name + ': ' + err.message,
+                                url: url,
+                                diagnosis: 'Host is reachable, but the CORS preflight was rejected. The widget host must send Access-Control-Allow-Origin for this origin (' + window.location.origin + ').',
+                                noCorsStatus: r2.type + ' (opaque — status/headers hidden by browser)',
+                                likelyFix: 'Ensure the widget service has CORS enabled (AllowAnyOrigin) and that it responds to OPTIONS preflight requests. See feature/cors-fix branch.',
+                                responseHeaders: 'Not available — browser hides them on CORS failures'
+                            });
+                        })
+                        .catch(function (err2) {
+                            logResult('fetch error (host unreachable)', {
+                                error: err.name + ': ' + err.message,
+                                url: url,
+                                diagnosis: 'Host appears unreachable from this browser. The no-cors probe also failed.',
+                                noCorsError: err2.name + ': ' + err2.message,
+                                possibleCauses: [
+                                    'DNS resolution failure — the hostname does not resolve from the public internet',
+                                    'Connection refused / timeout — the host is not listening or is firewalled',
+                                    'Mixed content — this page is HTTPS but the target host is HTTP',
+                                    'Certificate error — the TLS certificate is invalid or untrusted'
+                                ],
+                                responseHeaders: 'Not available — no response was received'
+                            });
+                        });
                 });
-        });
+        }
 
         // ─── Initial load ─────────────────────────────────────────────
         loadLoaderScript(currentHost);
