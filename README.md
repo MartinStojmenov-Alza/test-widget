@@ -16,6 +16,7 @@ API endpoints directly via `fetch`.
 - **Widget embed** — loads `loader.js` and calls `Box2BoxPicker.open()` with configurable options
 - **Result display** — pretty-prints the `selectedBox` payload and logs all `postMessage` results
 - **Direct API test** — calls `GET /api/v1/public/boxes` and `GET /api/v1/public/boxes/search`
+- **API authentication** — masked `X-Api-Key` input for both direct REST calls
 
 ## Widget hosts
 
@@ -32,7 +33,24 @@ API endpoints directly via `fetch`.
 3. Optionally configure countries, language, and partner API key
 4. Click **Open Box2Box Picker**
 5. Pick a box in the overlay — the result is logged and displayed
-6. Scroll down to test the direct REST API endpoints
+6. Scroll down to the direct REST API tests, enter the selected environment's `X-Api-Key`, and select an endpoint
+
+## Direct API authentication (`X-Api-Key`)
+
+The field in section 5 supplies the `X-Api-Key` header for both direct REST calls. It is separate
+from the optional **Partner API Key**, which is sent as the `partnerApiKey` query parameter.
+The widget loader and picker options do not receive `X-Api-Key` from this field.
+
+Leading and trailing whitespace is trimmed. Leaving the field empty omits the header, allowing
+missing-key tests (expected HTTP 401). An invalid key also returns HTTP 401.
+
+The value is masked and kept only in the page's input, not saved to browser storage or included
+in request URLs or diagnostic logs. It remains visible in browser developer tools and accessible
+to scripts running on the page. Use a suitable test key; never commit a real key to this repository.
+When switching environments, replace it with the key for the selected environment.
+
+`X-Api-Key` triggers a CORS preflight; the API must allow this header. The existing `no-cors`
+diagnostic probe deliberately sends no API key.
 
 ## CORS
 

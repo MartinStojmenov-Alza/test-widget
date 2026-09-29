@@ -36,7 +36,7 @@
             font-weight: 600;
             min-width: 140px;
         }
-        select, input[type="text"], input[type="number"] {
+        select, input[type="text"], input[type="number"], input[type="password"] {
             padding: 6px 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
@@ -194,6 +194,10 @@
     <div class="api-test-section">
         <h2>5. Direct REST API Test</h2>
         <p class="subtitle">Calls the public boxes endpoint directly via fetch (no widget iframe).</p>
+        <div class="config-row">
+            <label for="public-api-key">X-Api-Key</label>
+            <input type="password" id="public-api-key" autocomplete="off" spellcheck="false">
+        </div>
         <button class="api-btn" id="api-boxes">GET /api/v1/public/boxes</button>
         <button class="api-btn" id="api-search">GET /api/v1/public/boxes/search</button>
     </div>
@@ -351,7 +355,11 @@
 
         // ─── Fetch with detailed CORS / network diagnostics ───────────
         function fetchWithDiagnostics(url) {
-            fetch(url, { mode: 'cors' })
+            var apiKey = document.getElementById('public-api-key').value.trim();
+            var reqHeaders = {};
+            if (apiKey) { reqHeaders['X-Api-Key'] = apiKey; }
+
+            fetch(url, { mode: 'cors', headers: reqHeaders })
                 .then(function (r) {
                     var status = r.status + ' ' + r.statusText;
                     var headers = {};
